@@ -1,0 +1,5 @@
+port: 8080
+no_bid_rate: 0.20
+min_price_cpm: 0.10
+max_price_cpm: 10.00
+seat: "mock-seat"
