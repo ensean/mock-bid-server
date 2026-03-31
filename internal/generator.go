@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"sort"
@@ -80,6 +81,9 @@ func (g *Generator) Run(ctx context.Context) error {
 	if g.Imps <= 0 {
 		return fmt.Errorf("imps must be > 0, got %d", g.Imps)
 	}
+	if g.Interval <= 0 {
+		return fmt.Errorf("interval must be > 0, got %s", g.Interval)
+	}
 	if g.client == nil {
 		g.client = &http.Client{Timeout: 5 * time.Second}
 	}
@@ -111,7 +115,7 @@ func (g *Generator) Run(ctx context.Context) error {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				g.sendOne(st)
+				g.sendOne(ctx, st)
 			}()
 		case <-summaryTicker.C:
 			printSummary(st, time.Since(start))
@@ -119,7 +123,7 @@ func (g *Generator) Run(ctx context.Context) error {
 	}
 }
 
-func (g *Generator) sendOne(st *runStats) {
+func (g *Generator) sendOne(ctx context.Context, st *runStats) {
 	req := g.buildRequest()
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -127,14 +131,21 @@ func (g *Generator) sendOne(st *runStats) {
 		return
 	}
 
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, g.Target, bytes.NewReader(data))
+	if err != nil {
+		st.record("error", 0)
+		return
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
 	t0 := time.Now()
-	resp, err := g.client.Post(g.Target, "application/json", bytes.NewReader(data))
+	resp, err := g.client.Do(httpReq)
 	latency := time.Since(t0)
 
 	if err != nil {
 		st.record("error", latency)
 		return
 	}
+	io.Copy(io.Discard, resp.Body)
 	resp.Body.Close()
 
 	switch resp.StatusCode {

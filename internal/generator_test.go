@@ -56,6 +56,13 @@ func TestGenerator_InvalidImps(t *testing.T) {
 	}
 }
 
+func TestGenerator_InvalidInterval(t *testing.T) {
+	g := &Generator{Target: "http://localhost", RPS: 1, Imps: 1, Interval: 0}
+	if err := g.Run(context.Background()); err == nil {
+		t.Error("expected error for interval=0")
+	}
+}
+
 func TestGenerator_CountsBids(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
