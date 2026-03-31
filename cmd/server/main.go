@@ -20,7 +20,12 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
-	slog.Info("config loaded", "port", cfg.Port, "no_bid_rate", cfg.NoBidRate, "min_price_cpm", cfg.MinPriceCPM, "max_price_cpm", cfg.MaxPriceCPM, "seat", cfg.Seat)
+	slog.Info("config loaded",
+		"port", cfg.Port,
+		"no_bid_rate", cfg.NoBidRate,
+		"min_price_cpm", cfg.MinPriceCPM,
+		"max_price_cpm", cfg.MaxPriceCPM,
+		"seat", cfg.Seat)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	bidder := internal.NewBidder(cfg, rng)
 	handler := internal.NewHandler(bidder)

@@ -10,6 +10,7 @@ import (
 	"github.com/mxmCherry/openrtb/openrtb2"
 )
 
+// mockBidder is a test double for Bidder.
 type mockBidder struct {
 	resp *openrtb2.BidResponse
 }
