@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -182,5 +183,74 @@ func TestAuction_NoDSPs(t *testing.T) {
 	result := adx.Auction(context.Background(), makeReq())
 	if result != nil {
 		t.Errorf("expected nil for no DSPs, got %+v", result)
+	}
+}
+
+type mockADX struct {
+	result *AuctionResult
+}
+
+func (m *mockADX) Auction(_ context.Context, _ *openrtb2.BidRequest) *AuctionResult {
+	return m.result
+}
+
+func TestADXHandler_Bid(t *testing.T) {
+	winBid := openrtb2.Bid{ID: "bid-1", ImpID: "imp-1", Price: 5.00}
+	mock := &mockADX{result: &AuctionResult{
+		WinnerDSP:  "dsp-1",
+		WinBid:     winBid,
+		ClearPrice: 3.00,
+	}}
+	h := NewADXHandler(mock)
+	body := `{"id":"req-1","imp":[{"id":"imp-1"}]}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/openrtb", strings.NewReader(body))
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("status: want 200, got %d", rec.Code)
+	}
+	var got openrtb2.BidResponse
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(got.SeatBid) != 1 || len(got.SeatBid[0].Bid) != 1 {
+		t.Fatalf("unexpected seatbid structure: %+v", got.SeatBid)
+	}
+	if got.SeatBid[0].Bid[0].Price != 3.00 {
+		t.Errorf("price: want clear price 3.00, got %f", got.SeatBid[0].Bid[0].Price)
+	}
+}
+
+func TestADXHandler_NoBid(t *testing.T) {
+	mock := &mockADX{result: nil}
+	h := NewADXHandler(mock)
+	body := `{"id":"req-1","imp":[{"id":"imp-1"}]}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/openrtb", strings.NewReader(body))
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Errorf("status: want 204, got %d", rec.Code)
+	}
+}
+
+func TestADXHandler_BadJSON(t *testing.T) {
+	mock := &mockADX{result: nil}
+	h := NewADXHandler(mock)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/openrtb", strings.NewReader("{{bad"))
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status: want 400, got %d", rec.Code)
+	}
+}
+
+func TestADXHandler_MethodNotAllowed(t *testing.T) {
+	mock := &mockADX{result: nil}
+	h := NewADXHandler(mock)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/openrtb", nil)
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status: want 405, got %d", rec.Code)
 	}
 }
