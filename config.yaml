@@ -1,5 +1,16 @@
+# DSP (mock bidder) settings
 port: 8080
 no_bid_rate: 0.20
 min_price_cpm: 0.10
 max_price_cpm: 10.00
 seat: "mock-seat"
+
+# ADX settings
+adx_port: 8090
+adx_timeout_ms: 200
+adx_floor_cpm: 0.50
+dsps:
+  - id: dsp-1
+    url: http://localhost:8081/bid
+  - id: dsp-2
+    url: http://localhost:8082/bid
