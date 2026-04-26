@@ -219,6 +219,15 @@ func TestADXHandler_Bid(t *testing.T) {
 	if got.SeatBid[0].Bid[0].Price != 3.00 {
 		t.Errorf("price: want clear price 3.00, got %f", got.SeatBid[0].Bid[0].Price)
 	}
+	if got.ID != "req-1" {
+		t.Errorf("BidResponse.ID: want req-1, got %s", got.ID)
+	}
+	if got.SeatBid[0].Seat != "dsp-1" {
+		t.Errorf("Seat: want dsp-1, got %s", got.SeatBid[0].Seat)
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type: want application/json, got %s", ct)
+	}
 }
 
 func TestADXHandler_NoBid(t *testing.T) {
@@ -230,6 +239,9 @@ func TestADXHandler_NoBid(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNoContent {
 		t.Errorf("status: want 204, got %d", rec.Code)
+	}
+	if rec.Body.Len() != 0 {
+		t.Errorf("body: want empty for 204, got %q", rec.Body.String())
 	}
 }
 
