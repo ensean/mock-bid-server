@@ -21,7 +21,9 @@ func dspServer(t *testing.T, price float64) *httptest.Server {
 			return
 		}
 		var req openrtb2.BidRequest
-		json.NewDecoder(r.Body).Decode(&req)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Errorf("dspServer: decode: %v", err)
+		}
 		impID := ""
 		if len(req.Imp) > 0 {
 			impID = req.Imp[0].ID
@@ -146,7 +148,10 @@ func TestAuction_AllBidsBelowFloor(t *testing.T) {
 func TestAuction_DSPTimeout(t *testing.T) {
 	// slow DSP: hangs until test is over
 	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(2 * time.Second)
+		select {
+		case <-r.Context().Done():
+		case <-time.After(10 * time.Second):
+		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer slow.Close()

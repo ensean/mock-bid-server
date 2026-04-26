@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sort"
 	"sync"
 	"time"
@@ -21,6 +22,9 @@ type ADX struct {
 
 // NewADX creates an ADX with a shared HTTP client.
 func NewADX(cfg Config) *ADX {
+	if cfg.AdxTimeoutMS <= 0 {
+		cfg.AdxTimeoutMS = 200
+	}
 	return &ADX{
 		cfg:    cfg,
 		client: &http.Client{},
@@ -29,9 +33,8 @@ func NewADX(cfg Config) *ADX {
 
 // DSPResult holds the outcome of a single DSP call.
 type DSPResult struct {
-	DSPID    string
-	TopPrice float64 // 0 if no-bid or error
-	Bid      *openrtb2.Bid
+	DSPID string
+	Bid   *openrtb2.Bid
 }
 
 // AuctionResult holds the outcome of a completed second-price auction.
@@ -150,7 +153,7 @@ func (a *ADX) callDSP(ctx context.Context, dsp DSPConfig, req *openrtb2.BidReque
 	if top == nil {
 		return DSPResult{DSPID: dsp.ID}
 	}
-	return DSPResult{DSPID: dsp.ID, TopPrice: top.Price, Bid: top}
+	return DSPResult{DSPID: dsp.ID, Bid: top}
 }
 
 // sendWinNotice fires a win notice to the DSP that won the auction.
@@ -166,16 +169,13 @@ func (a *ADX) sendWinNotice(dspID string, clearPrice float64) {
 	if winURL == "" {
 		return
 	}
-	// replace trailing path segment with /win
-	// e.g. http://host/bid → http://host/win
-	lastSlash := len(winURL) - 1
-	for lastSlash >= 0 && winURL[lastSlash] != '/' {
-		lastSlash--
-	}
-	if lastSlash < 0 {
+	u, err := url.Parse(winURL)
+	if err != nil || u.Host == "" {
+		slog.Warn("adx: win notice bad url", "dsp", dspID, "url", winURL)
 		return
 	}
-	winURL = winURL[:lastSlash+1] + "win"
+	u.Path = "/win"
+	winURL = u.String()
 
 	payload, _ := json.Marshal(map[string]float64{"price": clearPrice})
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
