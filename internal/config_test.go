@@ -49,3 +49,72 @@ func TestLoad_MissingFile(t *testing.T) {
 	_, err := Load()
 	if err == nil { t.Error("expected error for missing file, got nil") }
 }
+
+func TestLoad_ADXDefaults(t *testing.T) {
+	content := "port: 8080\n"
+	f, err := os.CreateTemp("", "config-*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	f.WriteString(content)
+	f.Close()
+	t.Setenv("CONFIG_PATH", f.Name())
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.AdxPort != 8090 {
+		t.Errorf("AdxPort default: want 8090, got %d", cfg.AdxPort)
+	}
+	if cfg.AdxTimeoutMS != 200 {
+		t.Errorf("AdxTimeoutMS default: want 200, got %d", cfg.AdxTimeoutMS)
+	}
+	if cfg.AdxFloorCPM != 0.50 {
+		t.Errorf("AdxFloorCPM default: want 0.50, got %f", cfg.AdxFloorCPM)
+	}
+}
+
+func TestLoad_ADXDSPs(t *testing.T) {
+	content := `
+port: 8080
+adx_port: 8090
+adx_timeout_ms: 150
+adx_floor_cpm: 1.00
+dsps:
+  - id: dsp-1
+    url: http://localhost:8081/bid
+  - id: dsp-2
+    url: http://localhost:8082/bid
+`
+	f, err := os.CreateTemp("", "config-*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	f.WriteString(content)
+	f.Close()
+	t.Setenv("CONFIG_PATH", f.Name())
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.AdxPort != 8090 {
+		t.Errorf("AdxPort: want 8090, got %d", cfg.AdxPort)
+	}
+	if cfg.AdxTimeoutMS != 150 {
+		t.Errorf("AdxTimeoutMS: want 150, got %d", cfg.AdxTimeoutMS)
+	}
+	if cfg.AdxFloorCPM != 1.00 {
+		t.Errorf("AdxFloorCPM: want 1.00, got %f", cfg.AdxFloorCPM)
+	}
+	if len(cfg.DSPs) != 2 {
+		t.Fatalf("DSPs: want 2, got %d", len(cfg.DSPs))
+	}
+	if cfg.DSPs[0].ID != "dsp-1" || cfg.DSPs[0].URL != "http://localhost:8081/bid" {
+		t.Errorf("DSPs[0]: got %+v", cfg.DSPs[0])
+	}
+	if cfg.DSPs[1].ID != "dsp-2" || cfg.DSPs[1].URL != "http://localhost:8082/bid" {
+		t.Errorf("DSPs[1]: got %+v", cfg.DSPs[1])
+	}
+}

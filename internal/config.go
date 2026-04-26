@@ -7,6 +7,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// DSPConfig holds the identity and endpoint of a single downstream DSP.
+type DSPConfig struct {
+	ID  string `yaml:"id"`
+	URL string `yaml:"url"`
+}
+
 // Config holds all runtime configuration for the mock bid server.
 type Config struct {
 	Port        int     `yaml:"port"`
@@ -14,6 +20,11 @@ type Config struct {
 	MinPriceCPM float64 `yaml:"min_price_cpm"`
 	MaxPriceCPM float64 `yaml:"max_price_cpm"`
 	Seat        string  `yaml:"seat"`
+
+	AdxPort      int         `yaml:"adx_port"`
+	AdxTimeoutMS int         `yaml:"adx_timeout_ms"`
+	AdxFloorCPM  float64     `yaml:"adx_floor_cpm"`
+	DSPs         []DSPConfig `yaml:"dsps"`
 }
 
 // Load reads configuration from the file at CONFIG_PATH env var (default: ./config.yaml).
@@ -45,6 +56,15 @@ func Load() (Config, error) {
 	}
 	if cfg.Seat == "" {
 		cfg.Seat = "mock-seat"
+	}
+	if cfg.AdxPort == 0 {
+		cfg.AdxPort = 8090
+	}
+	if cfg.AdxTimeoutMS == 0 {
+		cfg.AdxTimeoutMS = 200
+	}
+	if cfg.AdxFloorCPM == 0 {
+		cfg.AdxFloorCPM = 0.50
 	}
 	return cfg, nil
 }
