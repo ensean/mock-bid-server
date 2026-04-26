@@ -13,7 +13,7 @@ type DSPConfig struct {
 	URL string `yaml:"url"`
 }
 
-// Config holds all runtime configuration for the mock bid server.
+// Config holds all runtime configuration for the bidder and ADX servers.
 type Config struct {
 	Port        int     `yaml:"port"`
 	NoBidRate   float64 `yaml:"no_bid_rate"`
