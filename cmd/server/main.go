@@ -30,6 +30,7 @@ func main() {
 	bidder := internal.NewBidder(cfg, rng)
 	handler := internal.NewHandler(bidder)
 	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.Handle("/bid", handler)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: mux}
 	go func() {

@@ -36,6 +36,7 @@ func main() {
 	adx := internal.NewADX(cfg)
 	handler := internal.NewADXHandler(adx)
 	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.Handle("/openrtb", handler)
 
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.AdxPort), Handler: mux}
